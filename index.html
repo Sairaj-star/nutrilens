@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriLens — AI Meal Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0f0f0f;--bg1:#1a1a1a;--bg2:#232323;--bg3:#2a2a2a;
+  --neon:#39ff14;--neon-dim:#1a7a09;--neon-glow:rgba(57,255,20,0.15);
+  --text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:#2e2e2e;--border-neon:rgba(57,255,20,0.3);
+  --orange:#ff8c00;--red:#ff3c3c;
+}
+body{background:var(--bg0);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;min-height:100vh;line-height:1.6}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif}
+.app{max-width:900px;margin:0 auto;padding:1.5rem 1rem}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:var(--neon);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:20px;height:20px;fill:#0f0f0f}
+.logo h1{font-size:1.5rem;color:var(--text);letter-spacing:-0.5px}
+.logo span{color:var(--neon)}
+.tagline{font-size:12px;color:var(--text3);font-family:'DM Sans',sans-serif}
+
+/* GOAL BAR */
+.goal-bar-wrap{background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem}
+.goal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.goal-label{font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text2);font-weight:500}
+.goal-nums{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600}
+.goal-track{height:6px;background:var(--bg3);border-radius:99px;overflow:hidden}
+.goal-fill{height:100%;border-radius:99px;transition:width 0.6s ease,background 0.3s}
+.goal-input-row{display:flex;align-items:center;gap:8px;margin-top:10px}
+.goal-input-row label{font-size:12px;color:var(--text3)}
+.goal-input-row input{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:4px 8px;width:80px;outline:none}
+.goal-input-row input:focus{border-color:var(--border-neon)}
+
+/* LAYOUT */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}}
+
+/* UPLOAD */
+.upload-zone{background:var(--bg1);border:1.5px dashed var(--border-neon);border-radius:16px;padding:2rem;text-align:center;cursor:pointer;transition:background 0.2s,border-color 0.2s;position:relative;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.upload-zone:hover{background:var(--bg2);border-color:var(--neon)}
+.upload-zone.drag-over{background:rgba(57,255,20,0.05);border-color:var(--neon)}
+.upload-icon{width:52px;height:52px;background:var(--bg3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto}
+.upload-icon svg{width:24px;height:24px;stroke:var(--neon);fill:none;stroke-width:2}
+.upload-title{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:600;color:var(--text)}
+.upload-sub{font-size:12px;color:var(--text3)}
+.upload-btn{background:transparent;border:1px solid var(--border-neon);color:var(--neon);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 20px;border-radius:8px;cursor:pointer;transition:background 0.2s}
+.upload-btn:hover{background:var(--neon-glow)}
+.hidden-input{display:none}
+
+/* PREVIEW */
+.preview-box{position:relative;border-radius:16px;overflow:hidden;background:var(--bg1);border:1px solid var(--border);min-height:260px;display:flex;align-items:center;justify-content:center}
+.preview-img{width:100%;height:100%;object-fit:cover;display:block;max-height:320px;border-radius:16px}
+.scan-overlay{position:absolute;inset:0;pointer-events:none;display:none}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:var(--neon);box-shadow:0 0 8px var(--neon),0 0 20px rgba(57,255,20,0.4)}
+@keyframes scan{0%{top:0%}50%{top:95%}100%{top:0%}}
+.scan-active .scan-overlay{display:block}
+.scan-active .scan-line{animation:scan 1.8s ease-in-out infinite}
+.scan-active::after{content:'ANALYZING...';position:absolute;bottom:10px;left:0;right:0;text-align:center;font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--neon);letter-spacing:3px;opacity:0.85}
+.clear-img-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.65);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:11px;padding:5px 10px;cursor:pointer;z-index:2;font-family:'DM Sans',sans-serif}
+.clear-img-btn:hover{color:var(--red);border-color:var(--red)}
+
+/* ANALYZE BUTTON */
+.analyze-btn{width:100%;margin-top:12px;background:var(--neon);color:#0f0f0f;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:13px;border:none;border-radius:10px;cursor:pointer;transition:opacity 0.2s,transform 0.1s;letter-spacing:0.5px}
+.analyze-btn:hover{opacity:0.88}
+.analyze-btn:active{transform:scale(0.98)}
+.analyze-btn:disabled{opacity:0.35;cursor:not-allowed}
+
+/* RESULTS */
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.results-card{background:var(--bg1);border:1px solid var(--border);border-radius:16px;padding:1.5rem;animation:fadeIn 0.4s ease both}
+.results-placeholder{height:100%;display:flex;align-items:center;justify-content:center;min-height:260px;background:var(--bg1);border:1px dashed var(--border);border-radius:16px}
+
+.meal-name{font-family:'Space Grotesk',sans-serif;font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:4px}
+.calorie-count{font-family:'Space Grotesk',sans-serif;font-size:2.8rem;font-weight:700;color:var(--neon);line-height:1;margin-bottom:3px}
+.calorie-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:1.25rem}
+
+/* MACROS */
+.macros-section{margin-bottom:1.25rem}
+.macro-row{margin-bottom:9px}
+.macro-header{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px}
+.macro-track{height:6px;background:var(--bg3);border-radius:99px;overflow:hidden}
+.macro-fill{height:100%;border-radius:99px;transition:width 0.85s cubic-bezier(.4,0,0.2,1);width:0}
+.macro-protein{background:#3b82f6}
+.macro-carbs{background:var(--orange)}
+.macro-fat{background:#a855f7}
+
+/* HEALTH SCORE */
+.health-score-row{display:flex;align-items:center;gap:16px;margin-bottom:1.25rem}
+.hs-svg{flex-shrink:0}
+.hs-label{font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px}
+.hs-num{font-family:'Space Grotesk',sans-serif;font-size:1.7rem;font-weight:700;line-height:1}
+
+/* HEALTH TIP */
+.health-tip{background:var(--bg2);border-left:3px solid var(--neon);border-radius:0 8px 8px 0;padding:10px 14px;font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:1.25rem}
+
+/* INGREDIENTS */
+.ingredients-title{font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;font-weight:600}
+.ingredient-item{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px;font-size:13px;cursor:default;transition:background 0.15s;animation:fadeIn 0.4s ease both}
+.ingredient-item:hover{background:var(--bg3)}
+.ingredient-name{color:var(--text2)}
+.ingredient-cal{background:var(--bg3);color:var(--neon);font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid var(--border-neon)}
+
+/* DAILY LOG */
+.log-section{margin-top:1.5rem}
+.log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+.log-title{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:700;color:var(--text)}
+.log-actions{display:flex;gap:8px;align-items:center}
+.log-total{font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--neon);background:rgba(57,255,20,0.1);border:1px solid var(--border-neon);padding:4px 11px;border-radius:99px}
+.clear-btn{background:transparent;border:1px solid #333;color:var(--text3);font-size:12px;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:border-color 0.2s,color 0.2s}
+.clear-btn:hover{border-color:var(--red);color:var(--red)}
+.log-empty{text-align:center;color:var(--text3);font-size:13px;padding:2rem;background:var(--bg1);border:1px dashed var(--border);border-radius:12px}
+.log-cards{display:flex;flex-direction:column;gap:10px}
+.log-card{background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;animation:fadeIn 0.3s ease both;transition:border-color 0.2s}
+.log-card:hover{border-color:#3a3a3a}
+.log-card-name{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;color:var(--text)}
+.log-card-time{font-size:11px;color:var(--text3);margin-top:1px}
+.log-card-cal{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;color:var(--neon)}
+
+/* ERROR */
+.error-box{background:rgba(255,60,60,0.07);border:1px solid rgba(255,60,60,0.3);border-radius:12px;padding:1.5rem;text-align:center;color:#ff8080;font-size:13px;animation:fadeIn 0.3s ease}
+.error-box .retry-btn{margin-top:12px;background:transparent;border:1px solid rgba(255,60,60,0.4);color:#ff8080;font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 16px;border-radius:6px;cursor:pointer;transition:background 0.2s}
+.error-box .retry-btn:hover{background:rgba(255,60,60,0.1)}
+
+/* CONFIRM MODAL */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:100;animation:fadeIn 0.2s ease}
+.confirm-box{background:var(--bg1);border:1px solid var(--border);border-radius:14px;padding:1.75rem;max-width:320px;width:90%;text-align:center}
+.confirm-box h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;margin-bottom:8px;color:var(--text)}
+.confirm-box p{font-size:13px;color:var(--text2);margin-bottom:1.5rem;line-height:1.55}
+.confirm-btns{display:flex;gap:10px;justify-content:center}
+.confirm-btns button{padding:9px 22px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;border:1px solid var(--border);transition:opacity 0.2s}
+.confirm-cancel{background:var(--bg3);color:var(--text)}
+.confirm-cancel:hover{opacity:0.8}
+.confirm-yes{background:var(--red);color:#fff;border-color:var(--red)}
+.confirm-yes:hover{opacity:0.85}
+
+/* FOOTER */
+.footer{text-align:center;margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);font-size:12px;color:var(--text3)}
+.footer span{color:var(--neon)}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      </div>
+      <div>
+        <h1>Nutri<span>Lens</span></h1>
+        <div class="tagline">AI-powered meal analysis</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOAL BAR -->
+  <div class="goal-bar-wrap">
+    <div class="goal-header">
+      <span class="goal-label">Daily Calorie Goal</span>
+      <span class="goal-nums" id="goalNums">0 / 2000 kcal</span>
+    </div>
+    <div class="goal-track">
+      <div class="goal-fill" id="goalFill" style="width:0%;background:var(--neon)"></div>
+    </div>
+    <div class="goal-input-row">
+      <label>Set goal:</label>
+      <input type="number" id="goalInput" value="2000" min="500" max="9999">
+      <span style="font-size:12px;color:var(--text3)">kcal / day</span>
+    </div>
+  </div>
+
+  <!-- MAIN TWO COLUMN -->
+  <div class="two-col">
+
+    <!-- LEFT: UPLOAD + PREVIEW -->
+    <div>
+      <div class="upload-zone" id="dropZone">
+        <div class="upload-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        </div>
+        <div class="upload-title">Drop your meal photo</div>
+        <div class="upload-sub">or click to browse / use camera</div>
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose / Take Photo</button>
+        <input type="file" id="fileInput" class="hidden-input" accept="image/*" capture="environment">
+      </div>
+
+      <div class="preview-box" id="previewBox" style="display:none;margin-top:12px">
+        <img id="previewImg" class="preview-img" alt="meal preview">
+        <div class="scan-overlay" id="scanOverlay">
+          <div class="scan-line"></div>
+        </div>
+        <button class="clear-img-btn" id="clearImgBtn">✕ Remove</button>
+      </div>
+
+      <button class="analyze-btn" id="analyzeBtn" style="display:none" onclick="analyzeImage()">
+        ⚡ Analyze Meal
+      </button>
+    </div>
+
+    <!-- RIGHT: RESULTS -->
+    <div id="resultsPanel">
+      <div class="results-placeholder">
+        <div style="text-align:center;color:var(--text3)">
+          <div style="font-size:2.5rem;margin-bottom:10px;opacity:0.25">◎</div>
+          <div style="font-size:13px">Results will appear here</div>
+          <div style="font-size:11px;margin-top:4px;opacity:0.6">Upload a meal photo to get started</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DAILY LOG -->
+  <div class="log-section">
+    <div class="log-header">
+      <span class="log-title">Today's Log</span>
+      <div class="log-actions">
+        <span class="log-total" id="logTotal">0 kcal logged</span>
+        <button class="clear-btn" onclick="askClearLog()">Clear Log</button>
+      </div>
+    </div>
+    <div id="logContainer">
+      <div class="log-empty">No meals logged yet. Analyze a meal to start tracking.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Built with <span>NutriLens</span> · Powered by Claude Vision API
+  </div>
+
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="confirm-overlay" id="confirmOverlay" style="display:none">
+  <div class="confirm-box">
+    <h3>Clear daily log?</h3>
+    <p>This will remove all logged meals and reset your daily calorie total to zero.</p>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="document.getElementById('confirmOverlay').style.display='none'">Cancel</button>
+      <button class="confirm-yes" onclick="clearLog()">Clear All</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let imageBase64 = null;
+let imageMediaType = null;
+let dailyLog = [];
+let dailyGoal = 2000;
+let isAnalyzing = false;
+
+const dropZone    = document.getElementById('dropZone');
+const fileInput   = document.getElementById('fileInput');
+const previewBox  = document.getElementById('previewBox');
+const previewImg  = document.getElementById('previewImg');
+const analyzeBtn  = document.getElementById('analyzeBtn');
+const resultsPanel = document.getElementById('resultsPanel');
+const goalInput   = document.getElementById('goalInput');
+
+/* ── Goal ── */
+goalInput.addEventListener('change', () => {
+  dailyGoal = Math.max(500, parseInt(goalInput.value) || 2000);
+  goalInput.value = dailyGoal;
+  updateGoalBar();
+});
+
+/* ── File input ── */
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+/* ── Drag & drop ── */
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+/* ── Remove image ── */
+document.getElementById('clearImgBtn').addEventListener('click', resetUploader);
+
+function resetUploader() {
+  imageBase64 = null; imageMediaType = null;
+  previewBox.style.display = 'none';
+  previewBox.classList.remove('scan-active');
+  analyzeBtn.style.display = 'none';
+  fileInput.value = '';
+  dropZone.style.display = 'flex';
+  resultsPanel.innerHTML = `
+    <div class="results-placeholder">
+      <div style="text-align:center;color:var(--text3)">
+        <div style="font-size:2.5rem;margin-bottom:10px;opacity:0.25">◎</div>
+        <div style="font-size:13px">Results will appear here</div>
+        <div style="font-size:11px;margin-top:4px;opacity:0.6">Upload a meal photo to get started</div>
+      </div>
+    </div>`;
+}
+
+/* ── Load file ── */
+function loadFile(file) {
+  if (!file.type.startsWith('image/')) {
+    alert('Please upload an image file.');
+    return;
+  }
+  imageMediaType = file.type;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    imageBase64 = dataUrl.split(',')[1];
+    previewImg.src = dataUrl;
+    dropZone.style.display = 'none';
+    previewBox.style.display = 'block';
+    analyzeBtn.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ── Analyze ── */
+async function analyzeImage() {
+  if (!imageBase64 || isAnalyzing) return;
+  isAnalyzing = true;
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = 'Analyzing...';
+  previewBox.classList.add('scan-active');
+
+  const systemPrompt = `You are a nutrition analysis AI. When given a meal photo, respond ONLY with a valid JSON object (no markdown, no backticks, no preamble, no extra text) following this exact schema:
+{"meal_name":"string","total_calories":number,"macros":{"protein_g":number,"carbs_g":number,"fat_g":number},"ingredients":[{"name":"string","calories":number}],"health_score":number,"health_tip":"string"}
+Rules: health_score is 1-10 (10 = healthiest). Estimate calories as accurately as possible. No extra fields. JSON only.`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: imageMediaType, data: imageBase64 } },
+            { type: 'text',  text:  'Analyze this meal and return only the JSON nutrition data.' }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    previewBox.classList.remove('scan-active');
+
+    if (!response.ok) throw new Error(data.error?.message || `API error ${response.status}`);
+
+    const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
+    const result = JSON.parse(raw);
+    renderResults(result);
+    addToLog(result);
+
+  } catch (err) {
+    previewBox.classList.remove('scan-active');
+    resultsPanel.innerHTML = `
+      <div class="error-box">
+        <div style="font-size:1.4rem;margin-bottom:8px">⚠️</div>
+        <div><strong>Analysis failed</strong></div>
+        <div style="margin-top:6px;opacity:0.75;font-size:12px">${err.message || 'Could not read the image. Try a clearer photo.'}</div>
+        <button class="retry-btn" onclick="resetUploader()">Try Again</button>
+      </div>`;
+  } finally {
+    isAnalyzing = false;
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = '⚡ Analyze Meal';
+  }
+}
+
+/* ── Render results ── */
+function renderResults(r) {
+  const score = Math.min(10, Math.max(1, Math.round(r.health_score)));
+  const total = (r.macros.protein_g + r.macros.carbs_g + r.macros.fat_g) || 1;
+  const pp = Math.round((r.macros.protein_g / total) * 100);
+  const cp = Math.round((r.macros.carbs_g   / total) * 100);
+  const fp = Math.round((r.macros.fat_g     / total) * 100);
+  const scoreColor = score >= 7 ? '#39ff14' : score >= 5 ? '#ff8c00' : '#ff3c3c';
+  const arc = buildArc(score, scoreColor);
+
+  const ingredientsHTML = (r.ingredients || []).map((ing, i) =>
+    `<div class="ingredient-item" style="animation-delay:${0.08 + i * 0.06}s">
+       <span class="ingredient-name">${ing.name}</span>
+       <span class="ingredient-cal">${Math.round(ing.calories)} kcal</span>
+     </div>`
+  ).join('');
+
+  resultsPanel.innerHTML = `
+    <div class="results-card">
+      <div class="meal-name">${r.meal_name}</div>
+      <div class="calorie-count">${Math.round(r.total_calories)}</div>
+      <div class="calorie-label">total calories</div>
+
+      <div class="macros-section">
+        <div class="macro-row">
+          <div class="macro-header"><span>Protein</span><span>${Math.round(r.macros.protein_g)}g</span></div>
+          <div class="macro-track"><div class="macro-fill macro-protein" id="mP"></div></div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-header"><span>Carbs</span><span>${Math.round(r.macros.carbs_g)}g</span></div>
+          <div class="macro-track"><div class="macro-fill macro-carbs" id="mC"></div></div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-header"><span>Fat</span><span>${Math.round(r.macros.fat_g)}g</span></div>
+          <div class="macro-track"><div class="macro-fill macro-fat" id="mF"></div></div>
+        </div>
+      </div>
+
+      <div class="health-score-row">
+        <svg class="hs-svg" width="68" height="68" viewBox="0 0 68 68">${arc}</svg>
+        <div>
+          <div class="hs-label">Health Score</div>
+          <div class="hs-num" style="color:${scoreColor}">${score}<span style="font-size:1rem;color:var(--text3)">/10</span></div>
+        </div>
+      </div>
+
+      <div class="health-tip">${r.health_tip}</div>
+
+      <div class="ingredients-title">Breakdown</div>
+      <div>${ingredientsHTML}</div>
+    </div>`;
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const el = (id, w) => { const e = document.getElementById(id); if(e) e.style.width = w + '%'; };
+      el('mP', pp); el('mC', cp); el('mF', fp);
+    }, 80);
+  });
+}
+
+/* ── SVG arc gauge ── */
+function buildArc(score, color) {
+  const r = 28, cx = 34, cy = 34;
+  const startAngle = (-220) * Math.PI / 180;
+  const totalAngle = 260  * Math.PI / 180;
+  const fillAngle  = startAngle + (score / 10) * totalAngle;
+
+  function pt(a) { return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; }
+
+  const [bx1,by1] = pt(startAngle);
+  const [bx2,by2] = pt(startAngle + totalAngle);
+  const bgPath = `M${bx1},${by1} A${r},${r} 0 1,1 ${bx2},${by2}`;
+
+  const [fx1,fy1] = pt(startAngle);
+  const [fx2,fy2] = pt(fillAngle);
+  const large = ((score / 10) * 260 > 180) ? 1 : 0;
+  const fgPath = `M${fx1},${fy1} A${r},${r} 0 ${large},1 ${fx2},${fy2}`;
+
+  return `
+    <path d="${bgPath}" fill="none" stroke="#2a2a2a" stroke-width="5" stroke-linecap="round"/>
+    <path d="${fgPath}" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round"/>`;
+}
+
+/* ── Log ── */
+function addToLog(result) {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  dailyLog.push({ name: result.meal_name, calories: Math.round(result.total_calories), time: timeStr });
+  renderLog();
+  updateGoalBar();
+}
+
+function renderLog() {
+  const container = document.getElementById('logContainer');
+  if (dailyLog.length === 0) {
+    container.innerHTML = '<div class="log-empty">No meals logged yet. Analyze a meal to start tracking.</div>';
+    return;
+  }
+  container.innerHTML = `<div class="log-cards">${
+    dailyLog.map((m, i) => `
+      <div class="log-card" style="animation-delay:${i * 0.05}s">
+        <div>
+          <div class="log-card-name">${m.name}</div>
+          <div class="log-card-time">${m.time}</div>
+        </div>
+        <div class="log-card-cal">${m.calories} kcal</div>
+      </div>`).join('')
+  }</div>`;
+
+  const total = dailyLog.reduce((s, m) => s + m.calories, 0);
+  document.getElementById('logTotal').textContent = total.toLocaleString() + ' kcal logged';
+}
+
+function updateGoalBar() {
+  const total = dailyLog.reduce((s, m) => s + m.calories, 0);
+  const pct   = Math.min(100, Math.round((total / dailyGoal) * 100));
+  const fill  = document.getElementById('goalFill');
+  const nums  = document.getElementById('goalNums');
+  nums.textContent = `${total.toLocaleString()} / ${dailyGoal.toLocaleString()} kcal`;
+  fill.style.width      = pct + '%';
+  fill.style.background = pct >= 100 ? 'var(--red)' : pct >= 85 ? 'var(--orange)' : 'var(--neon)';
+}
+
+function askClearLog() {
+  if (dailyLog.length === 0) return;
+  document.getElementById('confirmOverlay').style.display = 'flex';
+}
+
+function clearLog() {
+  dailyLog = [];
+  document.getElementById('confirmOverlay').style.display = 'none';
+  renderLog();
+  updateGoalBar();
+}
+
+/* Init */
+updateGoalBar();
+</script>
+</body>
+</html>
